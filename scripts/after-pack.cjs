@@ -3,6 +3,34 @@ const { existsSync, mkdirSync, cpSync } = require('node:fs')
 const { join } = require('node:path')
 
 /**
+ * Copy the staged runtime tree into the app bundle.
+ *
+ * POSIX hosts use fs.cpSync with verbatimSymlinks so the pnpm-store link
+ * layout survives intact. The same call on Windows CI reliably dies mid-copy
+ * with a native exit code (0xC0000139), so Windows uses robocopy with /SL
+ * (copy links as links) instead; robocopy exit codes below 8 mean success.
+ */
+function copyTree(source, target) {
+  if (process.platform === 'win32') {
+    const result = spawnSync(
+      'robocopy',
+      [source, target, '/E', '/SL', '/DCOPY:T', '/COPY:DAT', '/R:1', '/W:1', '/NFL', '/NDL', '/NJH', '/NJS', '/NP'],
+      { stdio: ['ignore', 'ignore', 'inherit'] },
+    )
+    if (result.error !== undefined) throw result.error
+    if (result.status !== null && result.status >= 8) {
+      throw new Error(`robocopy ${source} -> ${target} failed with status ${String(result.status)}`)
+    }
+    return
+  }
+  cpSync(source, target, {
+    recursive: true,
+    verbatimSymlinks: true,
+    dereference: false,
+  })
+}
+
+/**
  * afterPack hook.
  *
  * electron-builder's own extraResources copier skips dot-directories and
@@ -30,11 +58,7 @@ module.exports = async function afterPack(context) {
     mkdirSync(resourcesStage, { recursive: true })
     for (const name of ['dsh-runtime', 'node-runtime']) {
       console.log(`afterPack: copying ${name} into ${resourcesStage}`)
-      cpSync(join(staged, name), join(resourcesStage, name), {
-        recursive: true,
-        verbatimSymlinks: true,
-        dereference: false,
-      })
+      copyTree(join(staged, name), join(resourcesStage, name))
     }
     console.log(`afterPack: staged runtimes copied into ${resourcesStage}`)
   } else {
