@@ -5,10 +5,6 @@
   "description": "Clean-room DeepWork desktop shell (commit 976d91c): Electron shell + sidecar DSH engine + Chromium stock DSH web UI, sharing $DSH_HOME",
   "author": "deepwork",
   "license": "BSD-3-Clause",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/oli-bot/dsh-desktop.git"
-  },
   "desktopName": "deepwork.desktop",
   "private": true,
   "type": "module",
