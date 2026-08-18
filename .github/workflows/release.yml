@@ -1,12 +1,19 @@
 name: release
 
-# Builds macOS and Windows installer packages and attaches them to a GitHub
-# Release. Trigger on tags (e.g. `v0.1.1`); push the tag after bumping the
-# version everywhere in package.json.
+# Builds the macOS installer package and attaches it to a GitHub Release.
+# Trigger on tags (e.g. `v0.1.1`); push the tag after bumping the version
+# everywhere in package.json.
 #
-# CI runners start clean, so the full build scripts are used (they rebuild
-# the pinned DSH runtime via `build:dsh`) rather than the `:quick` variants
-# that assume a local staged runtime cache.
+# Only macOS is built in CI today. The Windows installer is produced by
+# cross-building from macOS (`pnpm run dist:win`) or from a Windows machine,
+# then uploaded to the same Release (see README "本地构建与发布"). Native
+# windows-latest CI builds are blocked by unstable runtime staging of the
+# junction-heavy DSH runtime into the app bundle (fs.cpSync crashes with a
+# native exit code; robocopy hangs on the junction graph).
+#
+# CI runners start clean, so the full build script is used (it rebuilds the
+# pinned DSH runtime via `build:dsh`) rather than the `:quick` variant that
+# assumes a local staged runtime cache.
 
 on:
   push:
@@ -18,15 +25,7 @@ permissions:
 
 jobs:
   build:
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: macos-latest
-            script: dist:mac
-          - os: windows-latest
-            script: dist:win
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -42,10 +41,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build (${{ matrix.os }})
-        run: pnpm run ${{ matrix.script }}
-        env:
-          DEBUG: electron-builder
+      - name: Build
+        run: pnpm run dist:mac
 
       - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2

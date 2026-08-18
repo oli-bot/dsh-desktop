@@ -301,7 +301,10 @@ release/
 （`x64`/`arm64`），例如 `pnpm run dist:mac:x64`、`pnpm run dist:win:arm64`。
 
 仓库同时提供 GitHub Actions 工作流
-（`.github/workflows/release.yml`，macOS + Windows 双平台产物）。上传前
+（`.github/workflows/release.yml`，tag 触发 macOS 构建）。Windows 安装包
+通过 macOS 上的交叉构建（`pnpm run dist:win`）或 Windows 机器构建产出，
+再手动/脚本上传到同一个 Release（当前 windows-latest 原生 CI 构建被
+junction 树 staging 问题阻塞，详见 workflow 注释）。上传前
 建议在本机验证：
 
 ```sh
