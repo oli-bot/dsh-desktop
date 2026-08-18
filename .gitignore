@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.stage/
+.cache/
+release/
+release-dbg/
+builder-debug.yml
+tmp/
+*.log
+.DS_Store
+.local/
+stage/

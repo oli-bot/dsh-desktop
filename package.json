@@ -1,0 +1,141 @@
+{
+  "name": "@deepwork/desktop",
+  "productName": "DeepWork",
+  "version": "0.1.1",
+  "description": "Clean-room DeepWork desktop shell (commit 976d91c): Electron shell + sidecar DSH engine + Chromium stock DSH web UI, sharing $DSH_HOME",
+  "author": "deepwork",
+  "license": "BSD-3-Clause",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oli-bot/dsh-desktop.git"
+  },
+  "desktopName": "deepwork.desktop",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "exports": {
+    ".": {
+      "default": "./dist/plugin.js"
+    },
+    "./client": "./dist/client.js",
+    "./cordis.patch.yml": "./dist/cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/plugin.js",
+    "dist/client.js",
+    "dist/client.js.map",
+    "dist/cordis.patch.yml"
+  ],
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-runtime",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:dsh": "node scripts/build-dsh.mjs",
+    "stage:dsh": "node scripts/stage-dsh.mjs",
+    "stage:win": "node scripts/stage-win.mjs",
+    "start": "node scripts/build.mjs && ./node_modules/.bin/electron .",
+    "start:quick": "./node_modules/.bin/electron .",
+    "test": "node --test tests/*.test.ts",
+    "typecheck": "./node_modules/.bin/tsc --noEmit -p tsconfig.json",
+    "dist:mac": "pnpm run build && pnpm run build:dsh && pnpm run stage:dsh && node scripts/build-mac.mjs",
+    "dist:mac:quick": "pnpm run build && pnpm run stage:dsh && node scripts/build-mac.mjs",
+    "dist:win": "pnpm run build && pnpm run build:dsh && pnpm run stage:win && node scripts/build-win.mjs",
+    "dist:win:quick": "pnpm run build && pnpm run stage:win && node scripts/build-win.mjs",
+    "dist:mac:x64": "pnpm run build && pnpm run build:dsh && DEEPWORK_NODE_PLATFORM=darwin DEEPWORK_NODE_ARCH=x64 node scripts/stage-dsh.mjs && DEEPWORK_MAC_ARCH=x64 node scripts/build-mac.mjs",
+    "dist:win:arm64": "pnpm run build && pnpm run build:dsh && DEEPWORK_NODE_PLATFORM=win DEEPWORK_NODE_ARCH=arm64 node scripts/stage-dsh.mjs && DEEPWORK_WIN_ARCH=arm64 node scripts/build-win.mjs",
+    "dist:all": "bash scripts/dist-all.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "electron": "42.3.0",
+    "electron-builder": "^26.0.12",
+    "esbuild": "^0.25.12",
+    "pnpm": "11.20.0",
+    "typescript": "^6.0.3"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "build": {
+    "appId": "ai.deepseek.deepwork",
+    "productName": "DeepWork",
+    "asar": false,
+    "afterPack": "scripts/after-pack.cjs",
+    "directories": {
+      "output": "release",
+      "buildResources": "assets"
+    },
+    "files": [
+      "dist/**",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "assets/DeepWork.icns",
+      "identity": null,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0.0"
+    },
+    "dmg": {
+      "title": "DeepWork ${version}",
+      "artifactName": "DeepWork-${version}-${os}-${arch}.${ext}",
+      "window": {
+        "width": 540,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 140,
+          "y": 185,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 185,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "artifactName": "DeepWork-${version}-${os}-${arch}.${ext}",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icons/512x512.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

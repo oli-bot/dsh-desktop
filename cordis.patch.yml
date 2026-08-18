@@ -1,0 +1,18 @@
+# DeepSeek Harness is a bundle layer over dsh-base + dsh-web-app. The Electron
+# distribution keeps DSH's browser UI (stock dsh-web-app web-runtime row) and
+# mounts the desktop shell as an independently registered Host/Client plugin.
+
+- id: webserver
+  config:
+    host: 127.0.0.1
+    port: 0
+
+- id: web-runtime
+  config:
+    printUrl: true
+    surfaceContext: false
+    trustedHosts: []
+
+- insert:
+    - id: deepwork
+      name: '@deepwork/desktop'
