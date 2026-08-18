@@ -3,6 +3,10 @@ name: release
 # Builds macOS and Windows installer packages and attaches them to a GitHub
 # Release. Trigger on tags (e.g. `v0.1.1`); push the tag after bumping the
 # version everywhere in package.json.
+#
+# CI runners start clean, so the full build scripts are used (they rebuild
+# the pinned DSH runtime via `build:dsh`) rather than the `:quick` variants
+# that assume a local staged runtime cache.
 
 on:
   push:
@@ -19,9 +23,9 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            script: dist:mac:quick
+            script: dist:mac
           - os: windows-latest
-            script: dist:win:quick
+            script: dist:win
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -38,10 +42,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
-      - name: Build
+      - name: Build (${{ matrix.os }})
         run: pnpm run ${{ matrix.script }}
 
-      - name: Upload artifacts
+      - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
