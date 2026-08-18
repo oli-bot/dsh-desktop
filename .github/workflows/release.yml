@@ -44,6 +44,8 @@ jobs:
 
       - name: Build (${{ matrix.os }})
         run: pnpm run ${{ matrix.script }}
+        env:
+          DEBUG: electron-builder
 
       - name: Upload artifacts to Release
         uses: softprops/action-gh-release@v2

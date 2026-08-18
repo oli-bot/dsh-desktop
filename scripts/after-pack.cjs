@@ -1,3 +1,4 @@
+const { spawnSync } = require('node:child_process')
 const { existsSync, mkdirSync, cpSync } = require('node:fs')
 const { join } = require('node:path')
 
