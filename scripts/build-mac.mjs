@@ -25,12 +25,16 @@ if (!existsSync(icon)) {
   if (iconResult.status !== 0) process.exit(iconResult.status ?? 1)
 }
 
-const builder = join(root, 'node_modules', '.bin', 'electron-builder')
+// electron-builder CLI JS entry: spawning node_modules/.bin/electron-builder
+// breaks on Windows (Node only appends .exe when resolving PATH names, and
+// the .bin shim there is extensionless); `node <cli.js>` is identical on
+// every platform.
+const builder = join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js')
 const arch = process.env.DEEPWORK_MAC_ARCH ?? 'arm64'
 // `--publish never`: artifacts are attached to the GitHub Release by the
 // release workflow (softprops/action-gh-release); letting electron-builder
 // publish on CI would require a GH_TOKEN and fails without one.
-const result = spawnSync(builder, ['--mac', `--${arch}`, '--publish', 'never'], {
+const result = spawnSync(process.execPath, [builder, '--mac', `--${arch}`, '--publish', 'never'], {
   cwd: root,
   env: {
     ...process.env,

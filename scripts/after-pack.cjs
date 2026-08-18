@@ -1,5 +1,4 @@
-const { spawnSync } = require('node:child_process')
-const { existsSync, mkdirSync } = require('node:fs')
+const { existsSync, mkdirSync, cpSync } = require('node:fs')
 const { join } = require('node:path')
 
 /**
@@ -7,9 +6,10 @@ const { join } = require('node:path')
  *
  * electron-builder's own extraResources copier skips dot-directories and
  * node_modules trees, so the staged runtimes are copied into the app bundle
- * here with `cp -R` (preserves symlinks — the staged runtime is a pnpm
- * virtual store full of relative links). macOS builds are then ad-hoc signed
- * before DMG/ZIP targets consume the app directory.
+ * here with fs.cpSync (verbatimSymlinks preserves the symlink layout — the
+ * staged runtime is a pnpm virtual store full of relative links). macOS
+ * builds are then ad-hoc signed before DMG/ZIP targets consume the app
+ * directory.
  */
 module.exports = async function afterPack(context) {
   const projectRoot = context.packager.info.appDir
@@ -25,13 +25,11 @@ module.exports = async function afterPack(context) {
   if (existsSync(join(staged, 'dsh-runtime')) && existsSync(join(staged, 'node-runtime'))) {
     mkdirSync(resourcesStage, { recursive: true })
     for (const name of ['dsh-runtime', 'node-runtime']) {
-      const result = spawnSync('/bin/cp', ['-R', join(staged, name), join(resourcesStage, name)], {
-        stdio: 'inherit',
+      cpSync(join(staged, name), join(resourcesStage, name), {
+        recursive: true,
+        verbatimSymlinks: true,
+        dereference: false,
       })
-      if (result.error !== undefined) throw result.error
-      if (result.status !== 0) {
-        throw new Error(`failed to stage ${name} into the app bundle`)
-      }
     }
     console.log(`staged runtimes copied into ${resourcesStage}`)
   } else {

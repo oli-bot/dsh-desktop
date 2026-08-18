@@ -12,7 +12,6 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
-const builder = join(root, 'node_modules', '.bin', 'electron-builder')
 
 /**
  * electron-builder's bundled 7-Zip follows symbolic links on macOS/Linux
@@ -66,10 +65,14 @@ function readFileSafe(path) {
 ensureSevenZipStoresSymlinks()
 
 const arch = process.env.DEEPWORK_WIN_ARCH ?? 'x64'
+// electron-builder is invoked through its JS entry via the current Node
+// binary (see build-mac.mjs): spawning node_modules/.bin/electron-builder
+// breaks on Windows, where the .bin shim is extensionless.
+const builder = join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js')
 // `--publish never`: artifacts are attached to the GitHub Release by the
 // release workflow (softprops/action-gh-release); letting electron-builder
 // publish on CI would require a GH_TOKEN and fails without one.
-const result = spawnSync(builder, ['--win', `--${arch}`, '--publish', 'never'], {
+const result = spawnSync(process.execPath, [builder, '--win', `--${arch}`, '--publish', 'never'], {
   cwd: root,
   env: {
     ...process.env,
