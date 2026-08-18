@@ -66,7 +66,10 @@ function readFileSafe(path) {
 ensureSevenZipStoresSymlinks()
 
 const arch = process.env.DEEPWORK_WIN_ARCH ?? 'x64'
-const result = spawnSync(builder, ['--win', `--${arch}`], {
+// `--publish never`: artifacts are attached to the GitHub Release by the
+// release workflow (softprops/action-gh-release); letting electron-builder
+// publish on CI would require a GH_TOKEN and fails without one.
+const result = spawnSync(builder, ['--win', `--${arch}`, '--publish', 'never'], {
   cwd: root,
   env: {
     ...process.env,

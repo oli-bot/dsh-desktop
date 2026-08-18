@@ -594,8 +594,11 @@ for (const patchFile of cordisPatchFiles) {
 
 rmSync(stage, { recursive: true, force: true })
 mkdirSync(stage, { recursive: true })
-const pnpmBin = join(root, 'node_modules', '.bin', 'pnpm')
-run(existsSync(pnpmBin) ? pnpmBin : 'pnpm', [
+// Run pnpm through its JS entry via the current Node binary (see
+// build-dsh.mjs): spawning the bare `pnpm` command fails on Windows.
+const pnpmCli = join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
+run(process.execPath, [
+  pnpmCli,
   '--ignore-scripts',
   '--filter', '@deepseek-ai/dsh',
   'deploy', '--prod', '--legacy', runtime,

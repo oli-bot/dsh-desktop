@@ -27,7 +27,10 @@ if (!existsSync(icon)) {
 
 const builder = join(root, 'node_modules', '.bin', 'electron-builder')
 const arch = process.env.DEEPWORK_MAC_ARCH ?? 'arm64'
-const result = spawnSync(builder, ['--mac', `--${arch}`], {
+// `--publish never`: artifacts are attached to the GitHub Release by the
+// release workflow (softprops/action-gh-release); letting electron-builder
+// publish on CI would require a GH_TOKEN and fails without one.
+const result = spawnSync(builder, ['--mac', `--${arch}`, '--publish', 'never'], {
   cwd: root,
   env: {
     ...process.env,
