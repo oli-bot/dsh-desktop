@@ -74,31 +74,31 @@ DSH_SOURCE=/path/to/deepseek-harness pnpm run dist:mac:quick
 
 安装后应用就是 DeepSeek Harness 界面 + 该 DSH 运行时（同一份代码作为后端引擎）。
 
-## Windows 支持
+## 平台与产物
 
-macOS 之外，本仓库也提供 Windows x64 安装包构建：
+本仓库对外发布四个平台的安装包（同一 Git tag 下的 GitHub Release）：
 
-```sh
-DSH_SOURCE=/path/to/deepseek-harness pnpm run dist:win:quick
-# 产物：
-#   release/DeepWork-0.1.1-x64-setup.exe  (NSIS 安装器，建议在 Windows 上构建)
-#   release/DeepWork-0.1.1-x64.zip        (便携版，跨平台可直接打包)
-```
+| 平台 | 产物 | 构建命令 |
+|------|------|----------|
+| macOS arm64 | `DeepWork-0.1.1-mac-arm64.dmg` / `.zip` | `pnpm run dist:mac` |
+| macOS x64 | `DeepWork-0.1.1-mac-x64.dmg` / `.zip` | `pnpm run dist:mac:x64` |
+| Windows x64 | `DeepWork-0.1.1-win-x64.exe` | `pnpm run dist:win` |
+| Windows arm64 | `DeepWork-0.1.1-win-arm64.exe` | `pnpm run dist:win:arm64` |
 
-Windows 构建会在 stage 阶段下载并打包 Windows 版 Node.js 运行时
-（`node.exe` + `pnpm.cmd`），并把 `node-pty` 的 win32-x64/arm64
-ConPTY 预编译产物一起打进包。为得到完整可用的 Windows 原生依赖
-（koffi / sharp 等平台包），请在 Windows 机器上执行上述命令，或使用
-仓库自带的 GitHub Actions 工作流
-（`.github/workflows/release.yml`，macOS + Windows 双平台产物）。
+打包会把目标平台的 Node.js 运行时（Windows 为 `node.exe`，macOS/Linux 为
+`bin/node`）与依赖的平台原生模块一起打进包：`node-pty` 的 ConPTY/PTY
+prebuild（同包分发各平台）、以及 `sharp` / `koffi` / `node-addon-require-builtin`
+等按平台拆分的可选原生依赖。`stage-dsh.mjs` 在目标平台
+（`DEEPWORK_NODE_PLATFORM` / `DEEPWORK_NODE_ARCH`）与当前宿主不同时，
+会给 pnpm 写入 `supportedArchitectures`，让 deploy 阶段把目标平台的原生模块
+一并拉进 stage——因此在 macOS 上交叉打出的 Windows / x64 包同样包含目标平台
+的原生模块，不会退化成宿主平台的 arm64 版本。
 
 > 说明：macOS 上交叉打包 Windows 目标时，electron-builder 自带的 7za 会
 > 跟随 staged 运行时的 pnpm workspace 符号链接形成递归路径并刷屏
 > ENAMETOOLONG 警告，导致构建失败；`build-win.mjs` 会自动把缓存的
-> 7za 包装为 `-snl`（符号链接按链接存储，不跟随）以解决此问题。
-> 因此 macOS 上也能直接产出 `x64-setup.exe` 与 `x64.zip`。
-> 若需完整的 Windows 原生依赖（koffi / sharp 等平台包），仍建议在
-> Windows 机器或 CI（`.github/workflows/release.yml`）上构建。
+> 7za 包装为 `-snl`（符号链接按链接存储，不跟随）以解决此问题，
+> 因此 macOS 上也能直接产出 `win-x64.exe` 与 `win-arm64.exe`。
 
 ## 安装
 
@@ -260,60 +260,60 @@ gh auth login
 完整构建会重建固定 DSH；缓存已经就绪时可使用 quick 构建：
 
 ```sh
-# macOS（完整构建 + quick 构建）
+# macOS arm64（完整构建 + quick 构建，CI 默认走这条）
 pnpm run dist:mac
 pnpm run dist:mac:quick
 
-# Windows（在 Windows 机器或 CI 上执行）
+# macOS x64（在 arm64 构建机上交叉构建）
+pnpm run dist:mac:x64
+
+# Windows x64 / arm64（Windows 机器、或 macOS 上交叉构建）
 pnpm run dist:win
 pnpm run dist:win:quick
+pnpm run dist:win:arm64
 
 # 双平台顺序构建
 pnpm run dist:all
 ```
 
-macOS 产物位于 `release/`：
+产物位于 `release/`：
 
 ```text
 release/
-├── DeepWork-0.1.1-arm64.dmg
-├── DeepWork-0.1.1-arm64.zip
-└── mac-arm64/DeepWork.app
-```
-
-Windows 产物同样位于 `release/`：
-
-```text
-release/
-├── DeepWork-0.1.1-x64-setup.exe
-└── DeepWork-0.1.1-x64.zip
+├── DeepWork-0.1.1-mac-arm64.dmg / .zip   # macOS Apple Silicon
+├── DeepWork-0.1.1-mac-x64.dmg / .zip     # macOS Intel
+├── DeepWork-0.1.1-win-x64.exe            # Windows x64 (NSIS)
+├── DeepWork-0.1.1-win-arm64.exe          # Windows arm64 (NSIS)
+├── latest-mac.yml                        # macOS 自动更新元数据
+├── latest.yml                            # Windows 自动更新元数据
+└── win-unpacked|mac-arm64|mac-x64|...    # 未打包的应用目录
 ```
 
 > 说明：macOS 上交叉打包 Windows 目标时，electron-builder 自带的 7za 会
 > 跟随 staged 运行时的 pnpm workspace 符号链接形成递归路径并刷屏
 > ENAMETOOLONG 警告，导致构建失败；`build-win.mjs` 会自动把缓存的
 > 7za 包装为 `-snl`（符号链接按链接存储，不跟随）以解决此问题。
-> 若需完整的 Windows 原生依赖（koffi / sharp 等平台包），仍建议在
-> Windows 机器或 CI 上构建。
+> 目标平台的原生模块（sharp / koffi / node-pty ConPTY 等）由
+> `stage-dsh.mjs` 通过 `supportedArchitectures` 一并拉取，交叉构建即含
+> 目标平台原生依赖。
 
 打包内置的 Node runtime 默认匹配构建机平台；跨平台打包可显式指定
-`DEEPWORK_NODE_PLATFORM`（`linux`/`darwin`）与 `DEEPWORK_NODE_ARCH`
+`DEEPWORK_NODE_PLATFORM`（`darwin`/`win`）与 `DEEPWORK_NODE_ARCH`
 （`x64`/`arm64`），例如 `pnpm run dist:mac:x64`、`pnpm run dist:win:arm64`。
 
 仓库同时提供 GitHub Actions 工作流
-（`.github/workflows/release.yml`，tag 触发 macOS 构建）。Windows 安装包
-通过 macOS 上的交叉构建（`pnpm run dist:win`）或 Windows 机器构建产出，
-再手动/脚本上传到同一个 Release（当前 windows-latest 原生 CI 构建被
-junction 树 staging 问题阻塞，详见 workflow 注释）。上传前
-建议在本机验证：
+（`.github/workflows/release.yml`，tag 触发 macOS 构建，产出 macOS arm64）。
+Windows 安装包通过 macOS 上的交叉构建（`pnpm run dist:win[[:]arm64]` 等）
+或 Windows 机器构建产出，再手动/脚本上传到同一个 Release（当前
+windows-latest 原生 CI 构建被 junction 树 staging 问题阻塞，详见 workflow
+注释）。发布前建议在本机验证全部产物：
 
 ```sh
 pnpm run typecheck
 pnpm test
 pnpm run dist:mac:quick
-codesign --verify --deep --strict \
-  release/mac-arm64/DeepWork.app
-hdiutil verify release/DeepWork-0.1.1-arm64.dmg
+codesign --verify --deep --strict release/mac-arm64/DeepWork.app
+hdiutil verify release/DeepWork-0.1.1-mac-arm64.dmg
 ```
 
 当前 package、下载说明和公开 Release 均为 `v0.1.1`。准备下一个版本时，

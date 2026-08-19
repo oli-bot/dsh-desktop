@@ -36,6 +36,38 @@ const nodeArch = process.env.DEEPWORK_NODE_ARCH
   ?? { arm64: 'arm64', x64: 'x64' }[process.arch]
   ?? process.arch
 const nodeFolder = `node-v${nodeVersion}-${nodePlatform}-${nodeArch}`
+
+// Some dependencies declare platform-specific optionalDependencies (sharp →
+// @img/sharp-*, koffi → @koromix/koffi-*, node-addon-require-builtin).
+// `pnpm deploy` only installs the current host's variant by default, so a
+// cross-platform stage (e.g. win-x64 staged on darwin-arm64) would end up
+// with the HOST's native modules in the bundle — the app runs on the target
+// but its native image/FFI addons are broken. Point pnpm at the target
+// platform by writing a `supportedArchitectures` block into the workspace's
+// pnpm-workspace.yaml before deploy (pnpm 11 only honors this setting from
+// pnpm-workspace.yaml, not .npmrc). The host stays included via `current`, and
+// the workspace file is restored afterwards. When staging for the host itself
+// (e.g. darwin-arm64 on darwin-arm64) nothing is written and behavior is the
+// default single-platform install.
+const hostOsName = { darwin: 'darwin', linux: 'linux', win32: 'win32' }[process.platform] ?? process.platform
+const targetOsName = { darwin: 'darwin', linux: 'linux', win: 'win32' }[nodePlatform] ?? nodePlatform
+const targetCpuName = { arm64: 'arm64', x64: 'x64' }[nodeArch] ?? nodeArch
+
+function withTargetArchitectures(action) {
+  const crossTarget = targetOsName !== hostOsName || targetCpuName !== process.arch
+  if (!crossTarget) return action()
+  const wsYaml = join(dshSource, 'pnpm-workspace.yaml')
+  if (!existsSync(wsYaml)) return action()
+  const original = readFileSync(wsYaml, 'utf8')
+  const block = `\nsupportedArchitectures:\n  os:\n    - current\n    - ${targetOsName}\n  cpu:\n    - current\n    - ${targetCpuName}\n`
+  writeFileSync(wsYaml, `${original}${block}`)
+  console.log(`pnpm supportedArchitectures: os=[current,${targetOsName}] cpu=[current,${targetCpuName}]`)
+  try {
+    return action()
+  } finally {
+    writeFileSync(wsYaml, original)
+  }
+}
 // Node.js ships Windows as a zip and POSIX as a tarball; keep the checksum
 // filename in sync with the archive actually downloaded.
 const isWinTarget = nodePlatform === 'win'
@@ -597,12 +629,14 @@ mkdirSync(stage, { recursive: true })
 // Run pnpm through its JS entry via the current Node binary (see
 // build-dsh.mjs): spawning the bare `pnpm` command fails on Windows.
 const pnpmCli = join(root, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs')
-run(process.execPath, [
-  pnpmCli,
-  '--ignore-scripts',
-  '--filter', '@deepseek-ai/dsh',
-  'deploy', '--prod', '--legacy', runtime,
-], { cwd: dshSource, env: process.env })
+withTargetArchitectures(() => {
+  run(process.execPath, [
+    pnpmCli,
+    '--ignore-scripts',
+    '--filter', '@deepseek-ai/dsh',
+    'deploy', '--prod', '--legacy', runtime,
+  ], { cwd: dshSource, env: process.env })
+})
 
 rewriteWorkspaceLinks()
 relinkInstallationWorkspacePackages()
