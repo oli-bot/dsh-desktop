@@ -69,16 +69,31 @@ const arch = process.env.DEEPWORK_WIN_ARCH ?? 'x64'
 // binary (see build-mac.mjs): spawning node_modules/.bin/electron-builder
 // breaks on Windows, where the .bin shim is extensionless.
 const builder = join(root, 'node_modules', 'electron-builder', 'out', 'cli', 'cli.js')
+// electron-builder MERGES CLI arch flags with the arch lists in the build
+// config, so `--win --arm64` beside a config `win.target` arch:[x64] would
+// package BOTH arches. afterPack stages a single runtime flavor, so the other
+// arch would silently get the wrong node binary. Pin the target arch in
+// package.json for this run and restore it afterwards.
+const pkgPath = join(root, 'package.json')
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
+const savedWinTarget = pkg.build.win.target
+pkg.build.win.target = [{ target: 'nsis', arch: [arch] }]
+writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`)
 // `--publish never`: artifacts are attached to the GitHub Release by the
 // release workflow (softprops/action-gh-release); letting electron-builder
 // publish on CI would require a GH_TOKEN and fails without one.
-const result = spawnSync(process.execPath, [builder, '--win', `--${arch}`, '--publish', 'never'], {
-  cwd: root,
-  env: {
-    ...process.env,
-    CSC_IDENTITY_AUTO_DISCOVERY: 'false',
-  },
-  stdio: 'inherit',
-})
-if (result.error !== undefined) throw result.error
-if (result.status !== 0) process.exit(result.status ?? 1)
+try {
+  const result = spawnSync(process.execPath, [builder, '--win', '--publish', 'never'], {
+    cwd: root,
+    env: {
+      ...process.env,
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false',
+    },
+    stdio: 'inherit',
+  })
+  if (result.error !== undefined) throw result.error
+  if (result.status !== 0) process.exit(result.status ?? 1)
+} finally {
+  pkg.build.win.target = savedWinTarget
+  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`)
+}
