@@ -80,10 +80,10 @@ DSH_SOURCE=/path/to/deepseek-harness pnpm run dist:mac:quick
 
 | 平台 | 产物 | 构建命令 |
 |------|------|----------|
-| macOS arm64 | `DeepWork-0.1.1-mac-arm64.dmg` / `.zip` | `pnpm run dist:mac` |
-| macOS x64 | `DeepWork-0.1.1-mac-x64.dmg` / `.zip` | `pnpm run dist:mac:x64` |
-| Windows x64 | `DeepWork-0.1.1-win-x64.exe` | `pnpm run dist:win` |
-| Windows arm64 | `DeepWork-0.1.1-win-arm64.exe` | `pnpm run dist:win:arm64` |
+| macOS arm64 | `DeepWork-0.1.2-mac-arm64.dmg` / `.zip` | `pnpm run dist:mac` |
+| macOS x64 | `DeepWork-0.1.2-mac-x64.dmg` / `.zip` | `pnpm run dist:mac:x64` |
+| Windows x64 | `DeepWork-0.1.2-win-x64.exe` | `pnpm run dist:win` |
+| Windows arm64 | `DeepWork-0.1.2-win-arm64.exe` | `pnpm run dist:win:arm64` |
 
 打包会把目标平台的 Node.js 运行时（Windows 为 `node.exe`，macOS/Linux 为
 `bin/node`）与依赖的平台原生模块一起打进包：`node-pty` 的 ConPTY/PTY
@@ -107,8 +107,8 @@ prebuild（同包分发各平台）、以及 `sharp` / `koffi` / `node-addon-req
 从 [GitHub Releases](#releases)
 下载测试包（本仓库的发布名称为 DeepWork）：
 
-- `DeepWork-0.1.1-arm64.dmg`
-- `DeepWork-0.1.1-arm64.zip`
+- `DeepWork-0.1.2-arm64.dmg`
+- `DeepWork-0.1.2-arm64.zip`
 
 打开 DMG，把 `DeepWork.app` 拖入 `Applications`。当前测试包没有
 Developer ID 和 notarization，首次启动时可在 Finder 中右键应用并选择
@@ -280,10 +280,10 @@ pnpm run dist:all
 
 ```text
 release/
-├── DeepWork-0.1.1-mac-arm64.dmg / .zip   # macOS Apple Silicon
-├── DeepWork-0.1.1-mac-x64.dmg / .zip     # macOS Intel
-├── DeepWork-0.1.1-win-x64.exe            # Windows x64 (NSIS)
-├── DeepWork-0.1.1-win-arm64.exe          # Windows arm64 (NSIS)
+├── DeepWork-0.1.2-mac-arm64.dmg / .zip   # macOS Apple Silicon
+├── DeepWork-0.1.2-mac-x64.dmg / .zip     # macOS Intel
+├── DeepWork-0.1.2-win-x64.exe            # Windows x64 (NSIS)
+├── DeepWork-0.1.2-win-arm64.exe          # Windows arm64 (NSIS)
 ├── latest-mac.yml                        # macOS 自动更新元数据
 ├── latest.yml                            # Windows 自动更新元数据
 └── win-unpacked|mac-arm64|mac-x64|...    # 未打包的应用目录
@@ -313,10 +313,10 @@ pnpm run typecheck
 pnpm test
 pnpm run dist:mac:quick
 codesign --verify --deep --strict release/mac-arm64/DeepWork.app
-hdiutil verify release/DeepWork-0.1.1-mac-arm64.dmg
+hdiutil verify release/DeepWork-0.1.2-mac-arm64.dmg
 ```
 
-当前 package、下载说明和公开 Release 均为 `v0.1.1`。准备下一个版本时，
+当前 package、下载说明和公开 Release 均为 `v0.1.2`。准备下一个版本时，
 先统一更新 workspace package 版本，再使用同一版本创建 tag 与 Release：
 
 ```sh

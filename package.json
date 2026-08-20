@@ -1,7 +1,7 @@
 {
   "name": "@deepwork/desktop",
   "productName": "DeepWork",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Clean-room DeepWork desktop shell (commit 976d91c): Electron shell + sidecar DSH engine + Chromium stock DSH web UI, sharing $DSH_HOME",
   "author": "deepwork",
   "license": "BSD-3-Clause",

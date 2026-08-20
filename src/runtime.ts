@@ -28,8 +28,8 @@ const DEFAULT_READY_TIMEOUT_MS = 60_000
 /** Grace window for SIGTERM before the supervisor escalates to SIGKILL. */
 const DEFAULT_STOP_TIMEOUT_MS = 8_000
 
-/** Profile name reserved for the DeepWork desktop surface. */
-export const DESKTOP_PROFILE = 'deepwork'
+/** DSH profile used by DeepWork; it intentionally matches the browser profile. */
+export const DESKTOP_PROFILE = 'web'
 
 /** Process launch contract for the sidecar engine. */
 export interface SidecarOptions {

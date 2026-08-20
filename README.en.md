@@ -46,8 +46,8 @@ settings and ThemeService contracts.
 
 Download the test package from [GitHub Releases](https://github.com/oli-bot/dsh-desktop/releases):
 
-- `DeepWork-0.1.1-arm64.dmg`
-- `DeepWork-0.1.1-arm64.zip`
+- `DeepWork-0.1.2-arm64.dmg`
+- `DeepWork-0.1.2-arm64.zip`
 
 Open the DMG and drag `DeepWork.app` into `Applications`. Current test
 packages have no Developer ID or notarization; on first launch, right-click
@@ -134,10 +134,10 @@ Artifacts land in `release/`:
 
 ```text
 release/
-├── DeepWork-0.1.1-arm64.dmg     (macOS)
-├── DeepWork-0.1.1-arm64.zip     (macOS)
-├── DeepWork-0.1.1-x64-setup.exe (Windows NSIS)
-└── DeepWork-0.1.1-x64.zip       (Windows portable)
+├── DeepWork-0.1.2-arm64.dmg     (macOS)
+├── DeepWork-0.1.2-arm64.zip     (macOS)
+├── DeepWork-0.1.2-x64-setup.exe (Windows NSIS)
+└── DeepWork-0.1.2-x64.zip       (Windows portable)
 ```
 
 The bundled Node runtime matches the build machine by default; for
@@ -152,10 +152,10 @@ pnpm run typecheck
 pnpm test
 pnpm run dist:mac:quick
 codesign --verify --deep --strict release/mac-arm64/DeepWork.app
-hdiutil verify release/DeepWork-0.1.1-arm64.dmg
+hdiutil verify release/DeepWork-0.1.2-arm64.dmg
 ```
 
-Current package, download notes and public Release are `v0.1.1`. To prepare
+Current package, download notes and public Release are `v0.1.2`. To prepare
 the next version, update the workspace package version first, then create a
 tag and Release with the same version.
 

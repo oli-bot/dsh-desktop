@@ -1,13 +1,11 @@
 /**
  * DeepWork profile provisioning.
  *
- * The desktop surface boots its own DSH profile (`deepwork`) under the
- * shared home, composed from the same bundles as the browser web profile
- * (dsh-base + dsh-web-app) so the Chromium UI is the stock DSH UI. DeepWork's
- * own plugin is registered as an out-of-tree file: dependency of the profile
- * (pnpm-linked into the profile's node_modules), and the desktop patch layer
- * is passed at boot time with `--patch`, leaving the profile's own
- * cordis.patch.yml free for the user.
+ * DeepWork boots the shared DSH `web` profile directly. Its own plugin is
+ * added as a preserved `link:` dependency while every existing bundle,
+ * dependency, and user patch remains intact. The desktop patch layer is
+ * passed at boot time with `--patch`, so the web profile remains the single
+ * source of truth for browser and desktop sessions.
  *
  * Sessions, credentials, settings, and attachments all live in the shared
  * home and are therefore shared with the CLI and the browser GUI.
@@ -20,7 +18,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DESKTOP_PROFILE } from './runtime.ts'
 
-/** Bundle layers the DeepWork profile composes (identical to the web template). */
+/** Bundles used only when the shared web profile does not exist yet. */
 export const DESKTOP_BUNDLES = [
   '@deepseek-ai/dsh-base',
   '@deepseek-ai/dsh-web-app',
@@ -37,7 +35,7 @@ const PROFILE_PNPM_WORKSPACE = 'packages:\n'
   + 'nodeLinker: hoisted\n'
   + 'autoInstallPeers: false\n'
 
-/** Files that make up the profile's install fingerprint (profile files + built artifacts). */
+/** Files that make up the shared web profile install fingerprint. */
 const FINGERPRINT_SOURCES = ['package.json', 'pnpm-workspace.yaml', 'cordis.patch.yml'] as const
 
 /** Absolute path of the app root (src/profile.ts compiles into dist/profile.js). */
@@ -90,12 +88,12 @@ export function profileFingerprint(profileDir: string): string {
 }
 
 /**
- * Initialize or refresh the DeepWork profile under the shared home.
+ * Initialize or refresh the shared web profile under the shared home.
  *
- * Never touches user layers: the profile's own cordis.patch.yml is created
- * only when missing. The manifest's bundles and file: dependencies are owned
- * by the desktop and rewritten on every start (cheap, atomic); pnpm install
- * runs only when the fingerprint changes.
+ * Existing profile fields are preserved. Only the DeepWork link dependency is
+ * added or refreshed; the web profile's bundles remain owned by the user/DSH.
+ * The profile patch is created only when missing, and pnpm install runs only
+ * when the resulting profile fingerprint changes.
  * @param dshHome - the shared DSH home.
  * @param onLog - progress callback for install output.
  * @returns the resolved profile directory.
@@ -108,18 +106,37 @@ export function ensureProfile(
   const profileDir = join(dshHome, 'profiles', DESKTOP_PROFILE)
   mkdirSync(profileDir, { recursive: true, mode: 0o700 })
 
+  const manifestPath = join(profileDir, 'package.json')
+  let previousManifest: Record<string, any> = {}
+  if (existsSync(manifestPath)) {
+    try {
+      previousManifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as Record<string, any>
+    } catch (error) {
+      throw new Error(`invalid shared web profile manifest: ${manifestPath}`, { cause: error })
+    }
+  }
+  const existingBundles = previousManifest.dsh?.profile?.bundles
+  const bundles = Array.isArray(existingBundles)
+    ? existingBundles.filter((value: unknown): value is string => typeof value === 'string')
+    : [...DESKTOP_BUNDLES]
   const manifest = {
-    name: 'dsh-profile-deepwork',
-    private: true,
-    // link: symlinks the package into the profile without installing its
-    // dependency trees — runtime resolution rides the checkout's own workspace
-    // links and the dsh app's healed profiles module fallback.
+    ...previousManifest,
+    name: previousManifest.name ?? 'dsh-profile-web',
+    private: previousManifest.private ?? true,
+    // link: symlink only DeepWork's host/client package into the shared web
+    // profile; every existing dependency and bundle is deliberately retained.
     dependencies: {
+      ...(previousManifest.dependencies ?? {}),
       '@deepwork/desktop': 'link:' + appRootPath,
     },
-    dsh: { profile: { bundles: [...DESKTOP_BUNDLES] } },
+    dsh: {
+      ...(previousManifest.dsh ?? {}),
+      profile: {
+        ...(previousManifest.dsh?.profile ?? {}),
+        bundles,
+      },
+    },
   }
-  const manifestPath = join(profileDir, 'package.json')
   const previous = existsSync(manifestPath) ? readFileSync(manifestPath, 'utf8') : null
   const next = JSON.stringify(manifest, undefined, 2) + '\n'
   if (previous !== next) {
@@ -133,7 +150,7 @@ export function ensureProfile(
   const workspacePath = join(profileDir, 'pnpm-workspace.yaml')
   if (!existsSync(workspacePath)) writeFileSync(workspacePath, PROFILE_PNPM_WORKSPACE, { mode: 0o600 })
 
-  const marker = join(profileDir, '.deepwork-install-fingerprint')
+  const marker = join(profileDir, '.deepwork-web-install-fingerprint')
   const fingerprint = profileFingerprint(profileDir)
   const installed = existsSync(marker) && readFileSync(marker, 'utf8') === fingerprint
   if (installed) return { profileDir, installed: false }

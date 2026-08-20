@@ -56,7 +56,7 @@ function readCapability(): DesktopHostCapability {
     appDataPath: process.env.DEEPWORK_APP_DATA ?? '',
     kind: 'electron',
     platform: process.platform,
-    profile: process.env.DEEPWORK_PROFILE ?? 'deepwork',
+    profile: process.env.DEEPWORK_PROFILE ?? 'web',
     version: process.env.DEEPWORK_VERSION ?? '0.0.0',
   })
 }
