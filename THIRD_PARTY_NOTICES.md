@@ -37,4 +37,4 @@ Node).
   (Apache-2.0) — used only during build; not shipped in the installer.
 
 The desktop shell source itself (`src/`, `scripts/`, assets) is original code
-licensed under [BSD 3-Clause](./LICENSE).
+licensed under [MIT](./LICENSE).

@@ -1,164 +1,247 @@
-# DeepWork
-
-[简体中文](./README.md)
-
 <p align="center">
-  <img src="./assets/dsh-whale.png" width="160" alt="DeepWork whale">
+  <a href="./README.md">简体中文</a> ·
+  <strong>English</strong>
 </p>
 
-**DeepWork** is an installable, extensible desktop workbench powered by
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH).
+<div align="center">
+  <img src="./assets/dsh-whale.png" width="160" alt="DeepWork whale">
+  <h1>DeepWork</h1>
+  <p><strong>A desktop shell powered by DeepSeek Harness (Electron + sidecar dsh + stock DSH web UI).</strong></p>
+  <p>
+    <a href="#architecture">Architecture</a> ·
+    <a href="#desktop-native-capabilities">Native capabilities</a> ·
+    <a href="#platforms-and-artifacts">Platforms</a> ·
+    <a href="#build-and-release">Build &amp; release</a>
+  </p>
+</div>
+
+<p align="center">
+  <img alt="macOS 12+" src="https://img.shields.io/badge/macOS-12%2B-111111?logo=apple&logoColor=white">
+  <img alt="Windows x64/arm64" src="https://img.shields.io/badge/Windows-x64%20%2F%20arm64-4493F8?logo=windows&logoColor=white">
+  <img alt="arch arm64/x64" src="https://img.shields.io/badge/arch-arm64%2Fx64-2f81f7">
+  <img alt="DSH 0.1.0-rc.5" src="https://img.shields.io/badge/DSH-0.1.0--rc.5-2f81f7">
+  <img alt="Electron 42" src="https://img.shields.io/badge/Electron-42-47848f?logo=electron&logoColor=white">
+  <img alt="MIT" src="https://img.shields.io/badge/license-MIT-34a853">
+</p>
+
+DeepWork is a desktop application around
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (DSH): an
+Electron shell acts as the host, spawns a **stock `dsh` engine** as a sidecar,
+and loads the engine's web runtime — the official DSH React UI — into
+Chromium. Models still run in the cloud; the desktop side owns the window,
+menus, engine lifecycle and local integration.
+
+It is not another DSH frontend, and it does not require a separate Web
+Terminal or shell plugin: the UI is the stock `dsh web` surface, and desktop
+capabilities are injected into the same engine as a plugin.
 
 > [!IMPORTANT]
 > **Community-maintained, unofficial third-party project.** This project is
-> not an official DeepSeek product; it is not developed, published, endorsed,
+> not an official DeepSeek product; it is not developed, published, endorsed
 > or supported by DeepSeek. `DeepSeek`, `DeepSeek Harness`, `dsh` and related
 > names, logos and trademarks belong to their respective owners. Please file
 > issues for the desktop client here, not with DeepSeek support.
-
-DeepWork keeps DSH's React UI and packages a pinned DSH runtime, Node.js,
-Electron and local capabilities into one desktop application. Models still run
-in the cloud; the desktop side owns the terminal, Workspace, Git, Browser,
-window integration and plugin lifecycle.
-
-It is not another DSH frontend, and it does not require a separate Web
-Terminal or shell plugin. `@deepwork/desktop` provides the unified desktop
-entry; feature modules keep using DSH's official Profile, Loader, locale,
-settings and ThemeService contracts.
-
-## Highlights
-
-- Self-contained Apple Silicon macOS app + installer, and Windows x64 NSIS
-  installer / portable zip.
-- Multi-tab PTY terminal, per-commit/per-line Review, Browser and Files.
-- Review comments can be aggregated into the message composer for the Agent.
-- Pinned Summary, expandable Side Panel and native window controls.
-- **Plugins** and **Settings** entries at the bottom of the desktop sidebar:
-  the plugin marketplace supports isolated preview, discard, apply and
-  restore; settings reuse the DSH settings page with desktop skins.
-- Real-time Chinese/English switching and four DeepWork desktop skins.
-- Human UI and Agent share the same plugin-install transaction and approval
-  boundary.
-
-## Install
-
-### Test packages
-
-Download the test package from [GitHub Releases](https://github.com/oli-bot/dsh-desktop/releases):
-
-- `DeepWork-0.1.2-arm64.dmg`
-- `DeepWork-0.1.2-arm64.zip`
-
-Open the DMG and drag `DeepWork.app` into `Applications`. Current test
-packages have no Developer ID or notarization; on first launch, right-click
-the app in Finder and choose "Open".
-
-Linux x64 can be built from source; the first AppImage / deb is not released
-yet. The desktop app shares `$DSH_HOME` (default `~/.dsh`) with the native
-DeepSeek Harness; the DeepSeek API key can be configured in the DSH settings
-page or written to `.env` in that directory.
-
-### From source
-
-Requires Node.js 24+ and pnpm:
-
-```sh
-pnpm install
-pnpm run build
-pnpm run stage:dsh
-pnpm start
-```
-
-`start` builds the desktop artifacts, stages the DSH runtime, then launches
-Electron. First build puts the source into `.cache/dsh-source/`. To use
-another checkout, set `DSH_SOURCE=/absolute/path` (package version must match
-the pinned version).
-
-## Shared DeepSeek Harness config and sessions
-
-The desktop app and the native DeepSeek Harness share the same `DSH_HOME`
-(default `~/.dsh`, overridable with `DSH_HOME`), so **model configuration,
-API keys and session history are all shared** — no double configuration:
-
-```text
-macOS   ~/.dsh            (or $DSH_HOME)
-Windows %USERPROFILE%\.dsh (or %DSH_HOME%)
-```
-
-The desktop app's own state (logs, plugin-marketplace previews) stays in
-Electron's userData (macOS `~/Library/Application Support/DeepWork`).
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-  App["DeepWork.app<br/>Electron shell"]
-  Desktop["@deepwork/desktop<br/>window · menu · unified entry"]
-  Runtime["Bundled Node.js + DSH runtime"]
-  UI["DSH React UI"]
-  App --> Desktop
-  Desktop --> Runtime
+  App["DeepWork.app<br/>Electron main"]
+  Host["@deepwork/desktop<br/>Host face (plugin.js)"]
+  Runtime["Sidecar dsh engine<br/>Bundled Node + staged DSH runtime"]
+  UI["Official DSH React UI<br/>(dsh web, served by engine)"]
+  Client["@deepwork/desktop<br/>Client face (client.js)"]
+  Menu["Electron native menus / preload bridge"]
+  App --> Host
+  App --> Runtime
+  App --> Menu
   Runtime --> UI
+  Menu --> Client
 ```
 
-- `@deepwork/desktop` (`src/main.ts`) is the single desktop entry: creates the
-  window and menus, manages the DSH runtime lifecycle, provides the Electron
-  bridge, and registers the built-in plugin loading order.
-- The DSH Host starts the Web runtime on a random loopback port; desktop
-  client plugins are injected on the browser side via `cordis.patch.yml`.
-- Third-party plugins are still managed by the DSH Profile and Loader.
+- `src/main.ts` (Electron main): window, native menus, splash, full sidecar-engine
+  lifecycle supervision, and the bridge between native actions and the renderer.
+- `src/runtime.ts` (`SidecarSupervisor`): spawns the engine with a **real Node**
+  (staged node-runtime): `<node> <dsh CLI> --profile web --patch <cordis.patch.yml>`,
+  waits for the `dsh web: http://127.0.0.1:<port>` readiness line, then points
+  Chromium at that URL. Teardown escalates SIGTERM → SIGKILL after a timeout.
+- `src/profile.ts` (`ensureProfile`): boots the shared `$DSH_HOME/profiles/web`
+  profile, preserving existing bundles / dependencies / user patches and adding
+  only `@deepwork/desktop` as a `link:` dependency; the desktop patch layer is
+  passed via `--patch` — **the browser and the desktop share one profile**.
+- `src/plugin.ts` (Host face, `dist/plugin.js`): publishes desktop facts into the
+  DSH Host graph (`provide('desktop', …)`), injects a system-prompt section that
+  identifies the DeepWork surface, and registers `DEEPWORK_*` bash env vars.
+- `src/client.ts` (Client face, `dist/client.js`): a thin command bridge that
+  forwards native menu actions to DSH's `sessions` / `workspaces` / `layout`
+  services (requires the Electron preload bridge `window.dshDesktop`).
+- `src/preload.ts` / `src/contracts.ts`: the minimal `contextBridge` bridge and
+  its type contracts.
+- `cordis.patch.yml`: the boot patch layer — pins the webserver to a random
+  `127.0.0.1` port and `insert`s the `deepwork` plugin row.
+
+### Shared `$DSH_HOME` with the CLI / browser
+
+The engine inherits the shell's `DSH_HOME` (default `~/.dsh`, overridable via
+the environment), so models, credentials, sessions and attachments are shared
+with the CLI and the browser GUI. The desktop mounts the very same `web`
+profile, producing no second set of state. Desktop-owned state (logs) lives in
+the Electron userData.
 
 ### Runtime directories
 
-- `.stage/dsh-runtime`: staged DSH runtime (generated by `stage:dsh`).
-- `.stage/node-runtime`: staged Node.js runtime.
-- `.cache/`: DSH source and Node.js download caches.
-- `dist/`: compiled desktop and plugin artifacts.
+| Path | Content | Tracked |
+| --- | --- | --- |
+| `stage/dsh-runtime` · `stage/node-runtime` | DSH / Node runtimes produced by `stage:dsh` | gitignored |
+| `.cache/` | DSH source clone and Node download cache | gitignored |
+| `dist/` | compiled desktop / plugin artifacts from `build` | gitignored |
+| `release/` | electron-builder output | gitignored |
+| `src/` | shell and plugin source | tracked |
 
-## Local build and release
+## Desktop native capabilities
+
+This version is a lean shell that keeps the stock DSH UI:
+
+- **Window & lifecycle**: splash (startup / error / restart, with log tail),
+  single-instance lock, macOS mock keychain (`--use-mock-keychain`), engine
+  shut down on window close.
+- **Native menu (macOS)**: About / Settings… / Restart Engine / Services /
+  Hide / Quit; **File**: New Session, Open Workspace…, Close; **Edit** /
+  **View** / **Window** are standard roles.
+- **Shortcuts** (actually wired):
+  | Action | Shortcut |
+  | --- | --- |
+  | New session | `Cmd/Ctrl+N` |
+  | Open workspace… | `Cmd/Ctrl+O` |
+  | Toggle sidebar | `Cmd/Ctrl+B` |
+  | Settings… | `Cmd/Ctrl+,` |
+  | Restart engine | `Cmd/Ctrl+Shift+R` |
+- **Command bridge**: menu actions go through the preload → `client.ts` → DSH
+  services (new session / open workspace paths / open settings / toggle
+  sidebar / focus composer).
+- **Hardening**: window uses `sandbox + contextIsolation`, webviews only allow
+  `http(s)` and have their preload stripped; the engine listens only on a
+  random loopback port; `clipboard-sanitized-write` is gated to the runtime
+  origin.
+
+> Note: this version intentionally does **not** include a PTY terminal panel,
+> per-commit/per-line Review, Browser / Files panels, plugin marketplace, desktop
+> skins, or Pinned Summary — those earlier-iteration features live in a
+> separate DeepWork web-surface repository. This repo maintains only the
+> "shell + stock UI" form.
+
+## Platforms and artifacts
+
+Four platform installers are published under the same Git-tag GitHub Release:
+
+| Platform | Artifact (current v0.1.2) | Command |
+|------|------|----------|
+| macOS arm64 | `DeepWork-0.1.2-mac-arm64.dmg` / `.zip` | `pnpm run dist:mac` |
+| macOS x64 | `DeepWork-0.1.2-mac-x64.dmg` / `.zip` | `pnpm run dist:mac:x64` |
+| Windows x64 | `DeepWork-0.1.2-win-x64.exe` (NSIS) | `pnpm run dist:win` |
+| Windows arm64 | `DeepWork-0.1.2-win-arm64.exe` (NSIS) | `pnpm run dist:win:arm64` |
+
+Packaging bundles the target platform's Node runtime (`node.exe` on Windows,
+`bin/node` on macOS) and its native modules: when the target platform differs
+from the host, `stage-dsh.mjs` writes a `supportedArchitectures` block (os/cpu =
+`current` + target) into `pnpm-workspace.yaml` so the deploy phases pulls the
+target's native deps (`@koromix/koffi-*`, `node-addon-require-builtin`,
+`node-pty` prebuilds, …). Cross-built Windows / x64 bundles therefore carry the
+correct native modules. When cross-packaging Windows on macOS, `build-win.mjs`
+wraps the cached electron-builder `7za` with `-snl` (store symlinks as links,
+don't follow) to avoid ENAMETOOLONG failures caused by recursive workspace
+links in the staged runtime.
+
+## From source
+
+Prerequisites: Node.js 24+ and pnpm:
 
 ```sh
-# macOS (full build + quick build)
+pnpm install
+pnpm run build       # compile main/preload/plugin/client → dist/
+pnpm run stage:dsh   # produce stage/dsh-runtime and stage/node-runtime
+pnpm start
+```
+
+- The first `stage:dsh` clones and builds the pinned DSH (`0.1.0-rc.5`, commit
+  `47f943859bef60e4160492346772ded9b24f765a`) into `.cache/dsh-source/`.
+- To use a local DSH checkout as the backend engine, set
+  `DSH_SOURCE=/path/to/deepseek-harness` (version must match the pinned one),
+  then `pnpm run build:dsh` (full rebuild) and `pnpm run stage:dsh`.
+- `pnpm run dist:mac:quick` reuses the cached DSH build for fast iteration.
+
+## Install
+
+Download the installer for your platform from
+[GitHub Releases](https://github.com/oli-bot/dsh-desktop/releases)
+(current v0.1.2):
+
+- macOS arm64 / x64: `DeepWork-0.1.2-mac-arm64.dmg` (or `.zip`), etc.
+- Windows x64 / arm64: `DeepWork-0.1.2-win-x64.exe`, etc.
+
+On macOS, open the DMG and drag `DeepWork.app` into Applications; test packages
+have no Developer ID or notarization, so on first launch right-click the app
+and choose "Open". On Windows, run the NSIS installer (not one-click; you can
+choose the install directory). The app shares `$DSH_HOME` with native DSH —
+configure models and the API key in the DSH settings page (credentials are
+persisted by DSH under the shared home).
+
+## Build and release
+
+```sh
+# macOS arm64: full build (rebuild pinned DSH) / quick (skip DSH rebuild)
 pnpm run dist:mac
 pnpm run dist:mac:quick
 
-# Windows (run on a Windows machine or in CI)
+# macOS x64 (cross-build on an arm64 machine)
+pnpm run dist:mac:x64
+
+# Windows x64 / arm64 (Windows machine, or cross-build on macOS)
 pnpm run dist:win
 pnpm run dist:win:quick
+pnpm run dist:win:arm64
 
-# Both platforms in sequence
+# All four platforms in sequence
 pnpm run dist:all
 ```
 
-Artifacts land in `release/`:
+Artifacts land in `release/`: `DeepWork-<version>-mac-arm64.dmg/.zip`,
+`mac-x64.dmg/.zip`, `win-x64.exe`, `win-arm64.exe`, plus
+`latest-mac.yml` / `latest.yml` (auto-update metadata) and unpacked dirs
+(`mac-arm64` / `mac` / `win-unpacked` / `win-arm64-unpacked`).
 
-```text
-release/
-├── DeepWork-0.1.2-arm64.dmg     (macOS)
-├── DeepWork-0.1.2-arm64.zip     (macOS)
-├── DeepWork-0.1.2-x64-setup.exe (Windows NSIS)
-└── DeepWork-0.1.2-x64.zip       (Windows portable)
-```
-
-The bundled Node runtime matches the build machine by default; for
-cross-platform packaging set `DEEPWORK_NODE_PLATFORM` (`linux`/`darwin`) and
-`DEEPWORK_NODE_ARCH` (`x64`/`arm64`), e.g. `pnpm run dist:mac:x64`.
-
-A GitHub Actions workflow (`.github/workflows/release.yml`) builds both
-platforms on tags. Verify locally before uploading:
+GitHub Actions (`.github/workflows/release.yml`, triggered on `v*` tags) runs a
+full build on `macos-latest` and uploads the macOS arm64 artifacts to that
+tag's Release. Windows / x64 artifacts are produced by macOS cross-build
+(`pnpm run dist:win:*`, `dist:mac:x64`) or on a Windows machine and uploaded to
+the same Release (native windows-latest CI is blocked by junction-tree staging;
+see the workflow comments). Verify locally before shipping:
 
 ```sh
 pnpm run typecheck
 pnpm test
 pnpm run dist:mac:quick
 codesign --verify --deep --strict release/mac-arm64/DeepWork.app
-hdiutil verify release/DeepWork-0.1.2-arm64.dmg
+hdiutil verify release/DeepWork-0.1.2-mac-arm64.dmg
 ```
 
-Current package, download notes and public Release are `v0.1.2`. To prepare
-the next version, update the workspace package version first, then create a
-tag and Release with the same version.
+To prepare a new version: bump `version` in `package.json`, then create a tag
+and Release with the same version (`gh release create vNEXT <artifacts...>`) and
+attach the artifacts.
+
+## Security boundary
+
+- The engine listens only on a random `127.0.0.1` port; agent channels are not
+  exposed.
+- The window uses `sandbox + contextIsolation` with no `nodeIntegration`;
+  webviews only allow `http(s)` sources and have their preload stripped.
+- The desktop patch layer is injected into the engine via `--patch`, never
+  written into the user profile's `cordis.patch.yml`; `ensureProfile` only adds
+  the single `@deepwork/desktop` `link:` dependency and overrides no user
+  bundles, dependencies or patches.
+- The engine process is supervised and torn down cleanly; the single-instance
+  lock prevents duplicate shells.
 
 ## License
 
-[BSD 3-Clause](./LICENSE)
+[MIT](./LICENSE)

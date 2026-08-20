@@ -1,0 +1,16 @@
+docs: rewrite README to match the clean-room shell; relicense to MIT
+
+The previous README described the earlier feature-rich iteration (PTY
+terminal, Review, Browser/Files, plugin marketplace, desktop skins, Pinned
+Summary, and a built-in plugin table) — none of which exist in the current
+codebase, which is a lean Electron shell + stock dsh web UI. Rewrite both
+README.md and README.en.md to document what is actually implemented:
+
+- architecture (Electron main + SidecarSupervisor + shared web profile)
+- real menu/shortcuts (Cmd+N/O/B, Cmd+,,, Cmd+Shift+R)
+- the @deepwork/desktop plugin's host/client faces
+- accurate platform matrix and build/release flow
+- an explicit note on features intentionally not included here
+
+License: switch the project to MIT (LICENSE, package.json, notices,
+badges).

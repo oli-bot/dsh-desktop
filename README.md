@@ -6,261 +6,171 @@
 <div align="center">
   <img src="./assets/dsh-whale.png" width="160" alt="DeepWork whale">
   <h1>DeepWork</h1>
-  <p><strong>以 DeepSeek Harness 为引擎的可安装、可扩展桌面工作台。</strong></p>
+  <p><strong>以 DeepSeek Harness 为后端引擎的桌面壳（Electron + sidecar dsh + 官方 DSH Web UI）。</strong></p>
   <p>
-    <a href="#安装">安装</a> ·
     <a href="#架构">架构</a> ·
-    <a href="#内置-plugins">内置 Plugins</a> ·
-    <a href="#本地构建与发布">构建与发布</a>
+    <a href="#桌面原生能力">桌面原生能力</a> ·
+    <a href="#平台与产物">平台与产物</a> ·
+    <a href="#构建与发布">构建与发布</a>
   </p>
 </div>
 
 <p align="center">
   <img alt="macOS 12+" src="https://img.shields.io/badge/macOS-12%2B-111111?logo=apple&logoColor=white">
-  <img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-4493F8?logo=windows&logoColor=white">
-  <img alt="Apple Silicon" src="https://img.shields.io/badge/arch-arm64-2f81f7">
+  <img alt="Windows x64/arm64" src="https://img.shields.io/badge/Windows-x64%20%2F%20arm64-4493F8?logo=windows&logoColor=white">
+  <img alt="arch arm64/x64" src="https://img.shields.io/badge/arch-arm64%2Fx64-2f81f7">
   <img alt="DSH 0.1.0-rc.5" src="https://img.shields.io/badge/DSH-0.1.0--rc.5-2f81f7">
   <img alt="Electron 42" src="https://img.shields.io/badge/Electron-42-47848f?logo=electron&logoColor=white">
-  <img alt="BSD 3-Clause" src="https://img.shields.io/badge/license-BSD--3--Clause-34a853">
+  <img alt="MIT" src="https://img.shields.io/badge/license-MIT-34a853">
 </p>
 
-DeepWork 保留 DeepSeek Harness（DSH）的 React UI，把固定版本的 DSH
-runtime、Node.js、Electron 和本地能力打包进一个桌面应用。模型仍运行在
-云端，桌面端负责终端、Workspace、Git、浏览器、窗口集成和 plugin 生命周期。
+DeepWork 是一个围绕 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
+（DSH）的桌面应用：Electron 壳担任宿主，spawn 一个**原版 `dsh` 引擎**作为 sidecar，
+再把引擎 Web runtime 的官方 DSH React UI 加载进 Chromium。模型仍运行在云端，桌面端
+负责窗口、菜单、引擎生命周期与本地集成交互。
 
-它不是另一套 DSH 前端，也不需要额外安装 Web Terminal 或 shell plugin。
-`@deepwork/desktop` 提供统一桌面入口，功能模块继续沿用 DSH 官方的
-Profile、Loader、locale、settings 和 ThemeService 契约。
+它不是另一套 DSH 前端，也不额外安装 Web Terminal 或 shell plugin：界面就是
+`dsh web` 官方 UI，桌面能力以插件形式注入同一个引擎。
 
 > [!IMPORTANT]
-> **社区维护的非官方第三方项目。** 本项目并非 DeepSeek 官方产品，
-> 不由 DeepSeek 开发、发布、背书或提供支持。`DeepSeek`、`DeepSeek
-> Harness`、`dsh` 及相关名称、标识和商标归其各自权利人所有。桌面端的问题
-> 请提交到本仓库，不要联系 DeepSeek 官方支持。
-
-## 主要能力
-
-- 自包含的 Apple Silicon macOS 应用与安装包，以及 Windows x64 安装器（NSIS）/ 便携版 zip。
-- 多标签 PTY Terminal、逐提交/逐行 Review、Browser 和 Files。
-- Review 评论可汇总进消息输入框，直接交给 Agent 处理。
-- Pinned Summary、可展开 Side Panel 与原生窗口控制。
-- 桌面左下角的 **插件（Plugins）** 与 **设置（Settings）** 入口：插件市场
-  支持隔离预览、放弃、应用和恢复；设置沿用 DSH 设置页并支持桌面皮肤。
-- 中英文实时切换，以及四套 DeepWork 自有桌面皮肤。
-- 人类 UI 与 Agent 共用同一套插件安装事务和审批边界。
-
-## 界面预览
-
-**左下角入口**：桌面左侧栏底部提供 **插件** 与 **设置** 两个选项，点击
-“插件”打开插件市场，“设置”打开 DSH 设置页。
-
-**插件市场**：浏览公共 DSH 社区目录，并在隔离环境中预览变更。
-
-**桌面皮肤**：在 DSH 设置页即时切换，由 Host 持久化选择。
-
-## 使用本地 DeepSeek Harness 作为后端引擎
-
-默认构建使用固定版本 DSH `0.1.0-rc.5`（官方公开仓库
-`47f943859bef60e4160492346772ded9b24f765a`）。如果你有一个本地
-DeepSeek Harness checkout，可以通过 `DSH_SOURCE` 让它成为本应用打包进
-安装包的后端引擎（版本必须与固定版本一致）：
-
-```sh
-# 例：把本仓库旁边的本地 DSH checkout 打进安装包
-DSH_SOURCE=/path/to/deepseek-harness pnpm run build:dsh
-DSH_SOURCE=/path/to/deepseek-harness pnpm run stage:dsh
-DSH_SOURCE=/path/to/deepseek-harness pnpm run dist:mac:quick
-```
-
-安装后应用就是 DeepSeek Harness 界面 + 该 DSH 运行时（同一份代码作为后端引擎）。
-
-## 平台与产物
-
-本仓库对外发布四个平台的安装包（同一 Git tag 下的 GitHub Release）：
-
-| 平台 | 产物 | 构建命令 |
-|------|------|----------|
-| macOS arm64 | `DeepWork-0.1.2-mac-arm64.dmg` / `.zip` | `pnpm run dist:mac` |
-| macOS x64 | `DeepWork-0.1.2-mac-x64.dmg` / `.zip` | `pnpm run dist:mac:x64` |
-| Windows x64 | `DeepWork-0.1.2-win-x64.exe` | `pnpm run dist:win` |
-| Windows arm64 | `DeepWork-0.1.2-win-arm64.exe` | `pnpm run dist:win:arm64` |
-
-打包会把目标平台的 Node.js 运行时（Windows 为 `node.exe`，macOS/Linux 为
-`bin/node`）与依赖的平台原生模块一起打进包：`node-pty` 的 ConPTY/PTY
-prebuild（同包分发各平台）、以及 `sharp` / `koffi` / `node-addon-require-builtin`
-等按平台拆分的可选原生依赖。`stage-dsh.mjs` 在目标平台
-（`DEEPWORK_NODE_PLATFORM` / `DEEPWORK_NODE_ARCH`）与当前宿主不同时，
-会给 pnpm 写入 `supportedArchitectures`，让 deploy 阶段把目标平台的原生模块
-一并拉进 stage——因此在 macOS 上交叉打出的 Windows / x64 包同样包含目标平台
-的原生模块，不会退化成宿主平台的 arm64 版本。
-
-> 说明：macOS 上交叉打包 Windows 目标时，electron-builder 自带的 7za 会
-> 跟随 staged 运行时的 pnpm workspace 符号链接形成递归路径并刷屏
-> ENAMETOOLONG 警告，导致构建失败；`build-win.mjs` 会自动把缓存的
-> 7za 包装为 `-snl`（符号链接按链接存储，不跟随）以解决此问题，
-> 因此 macOS 上也能直接产出 `win-x64.exe` 与 `win-arm64.exe`。
-
-## 安装
-
-### 安装测试包
-
-从 [GitHub Releases](#releases)
-下载测试包（本仓库的发布名称为 DeepWork）：
-
-- `DeepWork-0.1.2-arm64.dmg`
-- `DeepWork-0.1.2-arm64.zip`
-
-打开 DMG，把 `DeepWork.app` 拖入 `Applications`。当前测试包没有
-Developer ID 和 notarization，首次启动时可在 Finder 中右键应用并选择
-“打开”。
-
-Linux x64 已支持从源码构建；首个 AppImage / deb 尚未发布。发布后会出现在
-GitHub Releases。桌面应用与原生 DeepSeek Harness 共享 `$DSH_HOME`
-（默认 `~/.dsh`），DeepSeek API key 可以在 DSH 设置页配置，也可以写入
-该目录下的 `.env`。
-
-### 从源码运行
-
-需要 Node.js 24+ 与 pnpm：
-
-```sh
-pnpm install
-pnpm run build
-pnpm run stage:dsh
-pnpm start
-```
-
-`start` 会先构建 desktop 产物，再 stage DSH runtime，最后启动 Electron。
-首次构建会把源码放进 `.cache/dsh-source/`。如需使用另一个 checkout，可设置
-`DSH_SOURCE=/absolute/path`，但 package version 必须与固定版本一致。
-
-## 共享 DeepSeek Harness 配置与会话
-
-桌面应用与原生 DeepSeek Harness 共用同一套 `DSH_HOME`（默认
-`~/.dsh`，macOS 与 Windows 相同；可用环境变量 `DSH_HOME` 覆盖），
-因此**模型配置、API Key、会话历史全部共享**，不需要配两次：
-
-```text
-macOS   ~/.dsh            （或 $DSH_HOME）
-Windows %USERPROFILE%\.dsh （或 %DSH_HOME%）
-Linux   ~/.dsh            （或 $DSH_HOME）
-```
-
-DeepSeek API key 可以在 DSH 设置页配置，也可以写入该目录下的 `.env`。
-桌面应用自己的状态（日志、插件市场预览等）仍在 Electron 的 userData
-（macOS `~/Library/Application Support/DeepWork`）。
-
-## 常用操作
-
-| 操作 | 快捷键 |
-| --- | --- |
-| 新建会话 | `Cmd/Ctrl+N` |
-| 打开工作区 | `Cmd/Ctrl+O` |
-| 切换侧栏 | `Cmd/Ctrl+B` |
-| 切换底部面板 | `Cmd/Ctrl+J` |
-| 切换工具侧栏 | `Alt+Cmd/Ctrl+B` |
-| 打开浏览器 | `Cmd/Ctrl+T` |
-| 打开文件 | `Cmd/Ctrl+P` |
-| 打开 Review | `Ctrl+Shift+G` |
-| 侧边会话 | `Alt+Cmd/Ctrl+S` |
-| 聚焦输入框 | `Cmd/Ctrl+L` |
-| 重新启动 DSH Runtime | `Cmd/Ctrl+Shift+R` |
-
-工具侧栏与底部面板都可以通过顶部菜单栏或对应快捷键开关。
+> **社区维护的非官方第三方项目。** 本项目并非 DeepSeek 官方产品，不由 DeepSeek
+> 开发、发布、背书或提供支持。`DeepSeek`、`DeepSeek Harness`、`dsh` 及相关名称、
+> 标识和商标归其各自权利人所有。桌面端的问题请提交到本仓库，不要联系 DeepSeek
+> 官方支持。
 
 ## 架构
 
 ```mermaid
 flowchart TB
-  App["DeepWork.app<br/>Electron shell"]
-  Desktop["@deepwork/desktop<br/>window · menu · unified entry"]
-  Runtime["Bundled Node.js + DSH runtime"]
-  UI["DSH React UI"]
-  Plugins["Desktop plugins<br/>sidebar · terminal · skins · marketplace"]
-  App --> Desktop
-  Desktop --> Runtime
+  App["DeepWork.app<br/>Electron main"]
+  Host["@deepwork/desktop<br/>Host face (plugin.js)"]
+  Runtime["Sidecar dsh engine<br/>Bundled Node + staged DSH runtime"]
+  UI["Official DSH React UI<br/>(dsh web, served by engine)"]
+  Client["@deepwork/desktop<br/>Client face (client.js)"]
+  Menu["Electron 原生菜单 / preload 桥"]
+  App --> Host
+  App --> Runtime
+  App --> Menu
   Runtime --> UI
-  Plugins --> Desktop
+  Menu --> Client
 ```
 
-- `@deepwork/desktop`（`src/main.ts`）作为唯一桌面入口：创建窗口、菜单、
-  管理 DSH runtime 生命周期、提供 Electron bridge，并注册内置 plugin 的
-  加载顺序。
-- DSH Host 在随机 loopback 端口启动 Web runtime；桌面 client plugins 通过
-  `cordis.patch.yml` 注入浏览器侧图。
-- Better Sidebar Host（`@deepwork/better-sidebar-runtime`）复用
-  `upstream/DSH-better-sidebar` submodule 的 Host 能力（PTY、Files、Git、
-  history、commit diff），桌面 UI 由 `@deepwork/*` 插件提供。
-- 第三方插件仍由 DSH Profile 和 Loader 管理。
+- `src/main.ts`（Electron main）：建窗口、原生菜单、splash，监督 sidecar 引擎的
+  完整生命周期，并桥接原生动作与渲染进程。
+- `src/runtime.ts`（`SidecarSupervisor`）：用**真实 Node**（staged node-runtime）
+  spawn 引擎进程：`<node> <dsh CLI> --profile web --patch <cordis.patch.yml>`，
+  监听 `dsh web: http://127.0.0.1:<port>` 就绪行后把该 URL 交给 Chromium。
+  退出时 SIGTERM → 超时 SIGKILL 逐级回收。
+- `src/profile.ts`（`ensureProfile`）：引导共享的 `$DSH_HOME/profiles/web` ，
+  保留既有 bundles / 依赖 / 用户 patch，仅以 `link:` 装入 `@deepwork/desktop`，
+  并把桌面补丁层经 `--patch` 传入——**浏览器与桌面共用一个 Profile**。
+- `src/plugin.ts`（Host 面，`dist/plugin.js`）：把桌面能力发布进 DSH Host 图
+  （`provide('desktop', …)`），注入一段识别 DeepWork 表面的系统提示，并注册
+  `DEEPWORK_*` bash 环境变量。
+- `src/client.ts`（Client 面，`dist/client.js`）：极薄的命令桥——把原生菜单动作
+  转发到 DSH 的 `sessions` / `workspaces` / `layout` 服务（依赖 Electron
+  preload 桥 `window.dshDesktop`）。
+- `src/preload.ts` / `src/contracts.ts`：contextBridge 暴露的最小桌面桥与类型契约。
+- `cordis.patch.yml`：开机补丁层——webserver 锁 `127.0.0.1` 随机端口，并
+  `insert` `deepwork` 插件行。
+
+### 与 CLI / 浏览器共享 $DSH_HOME
+
+引擎继承 shell 的 `DSH_HOME`（默认 `~/.dsh`，可用环境变量覆盖），与 CLI、浏览器
+GUI 共用同一套模型配置、凭据、会话与附件；且桌面直接挂在同一 `web` profile 上，
+不产生第二套状态。桌面自己的日志等状态放在 Electron userData。
 
 ### 运行时目录
 
-- `.stage/dsh-runtime`：staged DSH runtime（由 `stage:dsh` 生成）。
-- `.stage/node-runtime`：staged Node.js runtime。
-- `.cache/`：DSH 源码与 Node.js 下载缓存。
-- `dist/`：desktop 与 plugins 的编译产物。
-
-## 内置 plugins
-
-| Plugin | 来源关系 | DeepWork 改造 |
+| 目录 | 内容 | 是否入库 |
 | --- | --- | --- |
-| `@deepwork/desktop` | DeepWork 自研 | 统一桌面入口、Electron bridge、原生菜单、窗口、Agent 能力与内置 plugin 注册顺序 |
-| `@deepwork/better-sidebar-runtime` | 固定跟踪 [`DSH-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) submodule | 仅编译上游 Host，提供 PTY、Files、Git、history 和 commit diff；不加载上游 UI |
-| `@deepwork/panel-controls` | 对早期 dsh-web-panel 交互模型的下游重实现 | 保留 DeepWork Terminal dock、主题、双语和 Session 状态，复用统一 PTY Host；不再安装独立 Web Terminal |
-| `@deepwork/pinned-summary` | DeepWork 自研 | 当前 Session 摘要、半高卡片和正文 gutter 管理 |
-| `@deepwork/desktop-sidebar` | [`DSH-better-sidebar`](https://github.com/omdsh-dev/DSH-better-sidebar) 的 DeepWork UI 下游 | 复用统一 Host，提供 Session tabs、viewer、Files、Git Review、逐行评论和 Agent composer 引用，保留现有布局、图标与主题 |
-| `@deepwork/plugin-marketplace` | 兼容 [`plugin-registry`](https://github.com/vlln/plugin-registry)、[`dsh-hub`](https://github.com/omdsh-dev/dsh-hub) 与公共 [`dsh-suite`](https://github.com/whyihaveyou/dsh-suite) 目录 | 统一隔离预览、风险确认、TOFU 来源锁、应用与恢复流程，并适配桌面导航和双语 UI |
-| `@deepwork/desktop-skins` | 对早期 dsh-skins ThemeService 扩展模型的下游重实现 | 沿用 ThemeService 扩展思路，重做皮肤、设置 UI 和 Host 持久化 |
+| `stage/dsh-runtime` · `stage/node-runtime` | `stage:dsh` 产出的 DSH / Node 运行时 | 否（gitignore） |
+| `.cache/` | DSH 源码 clone 与 Node 下载缓存 | 否 |
+| `dist/` | `build` 的桌面 / 插件编译产物 | 否 |
+| `release/` | electron-builder 打包产物 | 否 |
+| `src/` | 壳与插件源码 | 是 |
 
-标记为“下游改造”或“炼化”的 plugin 会定期检查上游 release 和 feature，选择
-与当前 DSH 契约兼容的能力同步。同步以 feature 为单位重新适配，不直接覆盖
-DeepWork 的 UI、主题和桌面交互。
+## 桌面原生能力
 
-更完整的来源与许可证说明见
-[THIRD_PARTY_NOTICES.md](./THIRD_PARTY_NOTICES.md)。
+当前版本是保留官方 DSH UI 的精简壳：
 
-## 插件市场
+- **窗口与生命周期**：splash（启动/出错/重启态，含日志尾部）、单实例锁、
+  macOS 假 keychain（`--use-mock-keychain`）、窗口关闭即退出引擎。
+- **原生菜单（macOS）**：关于 / 设置… / 重新启动引擎 / 服务 / 隐藏 / 退出；
+  **文件**：新建会话、打开工作区…、关闭；**编辑** / **视图** / **窗口** 为标准角色。
+- **快捷键**（实际生效的）：
+  | 操作 | 快捷键 |
+  | --- | --- |
+  | 新建会话 | `Cmd/Ctrl+N` |
+  | 打开工作区… | `Cmd/Ctrl+O` |
+  | 切换侧边栏 | `Cmd/Ctrl+B` |
+  | 设置… | `Cmd/Ctrl+,` |
+  | 重新启动引擎 | `Cmd/Ctrl+Shift+R` |
+- **命令桥**：菜单动作经 preload → `client.ts` 转发到 DSH 服务（新建会话 / 打开
+  工作区路径 / 打开设置 / 切换侧边栏 / 聚焦输入框）。
+- **平台内核**：窗口采用 `sandbox + contextIsolation`，webview 只放行
+  `http(s)` 且移除其 preload；引擎只监听 loopback 随机端口；剪贴板
+  `clipboard-sanitized-write` 仅对运行时来源放行。
 
-左侧底部 **插件（Plugins）** 页面默认读取公开的
-`whyihaveyou/dsh-suite/data/plugins.json` 目录，并保留条目中的规范
-`owner/repo` 身份。安装、更新、启用、停用和卸载都会先生成隔离 candidate
-Profile：
+> 说明：本版本**不包含** PTY 终端面板、逐提交/逐行 Review、Browser / Files 面板、
+> 插件市场、桌面皮肤、Pinned Summary 等早期迭代能力；这些功能在独立的 DeepWork
+> Web 表面改造仓库另行推进，本仓库只维护「壳 + 官方 UI」这一形态。
 
-```text
-检查来源与精确 commit
-        ↓
-在隔离 Profile 中安装并启动预览
-        ↓
-放弃（当前桌面不变）或应用（保留 previous）
-        ↓
-需要时 Undo 恢复上一份 Profile
-```
+## 平台与产物
 
-Agent 也可以通过对话进入同一流程。应用和恢复仍需要人类审批，不能绕过预览
-或启动第二套 DSH Loader。私有仓库认证使用 GitHub CLI：
+本仓库对外发布四个平台的安装包（同一 Git tag 的 GitHub Release 下）：
+
+| 平台 | 产物（当前 v0.1.2） | 构建命令 |
+|------|------|----------|
+| macOS arm64 | `DeepWork-0.1.2-mac-arm64.dmg` / `.zip` | `pnpm run dist:mac` |
+| macOS x64 | `DeepWork-0.1.2-mac-x64.dmg` / `.zip` | `pnpm run dist:mac:x64` |
+| Windows x64 | `DeepWork-0.1.2-win-x64.exe`（NSIS） | `pnpm run dist:win` |
+| Windows arm64 | `DeepWork-0.1.2-win-arm64.exe`（NSIS） | `pnpm run dist:win:arm64` |
+
+打包会把目标平台的 Node 运行时（Windows `node.exe`，macOS `bin/node`）与目标平台
+原生模块一并打进包：`stage-dsh.mjs` 在目标平台与宿主不一致时向
+`pnpm-workspace.yaml` 写入 `supportedArchitectures`（os/cpu 含 `current` + 目标），
+让 deploy 阶段拉入目标平台的原生依赖（如 `@koromix/koffi-*`、`node-addon-require-builtin`、
+`node-pty` prebuild 等），因此 macOS 上交叉打出的 Windows / x64 包也含目标平台的
+原生模块。macOS 交叉打包 Windows 时，`build-win.mjs` 会把 electron-builder 缓存的
+`7za` 包装为 `-snl`（符号链接按链接存储、不跟随），避免 staged 工作区递归链接导致
+ENAMETOOLONG 构建失败。
+
+## 从源码运行
+
+前置：Node.js 24+ 与 pnpm：
 
 ```sh
-gh auth login
+pnpm install
+pnpm run build       # 编译 main/preload/plugin/client → dist/
+pnpm run stage:dsh   # 产出 stage/dsh-runtime 与 stage/node-runtime
+pnpm start
 ```
 
-可通过 `DEEPWORK_MARKETPLACE_CATALOG=owner/repository/path/to/catalog.json`
-切换到兼容的 `dsh-external-hub/v0.1`、`omdsh-registry/v1` 或
-`dsh-suite` 1.0 目录。
+- 首次 `stage:dsh` 会把固定版本 DSH（`0.1.0-rc.5`，commit
+  `47f943859bef60e4160492346772ded9b24f765a`）clone 进 `.cache/dsh-source/` 并构建。
+- 使用本地 DSH checkout 作为后端引擎：`DSH_SOURCE=/path/to/deepseek-harness`
+  （版本必须与固定版本一致），再执行 `pnpm run build:dsh`（完整重建固定 DSH）与
+  `pnpm run stage:dsh`。
+- 希望改动时时热更：`pnpm run dist:mac:quick` 使用已缓存的 DSH 构建。
 
-## 安全边界
+## 安装
 
-- DSH Web runtime 与 Agent 管理通道只监听随机 loopback 端口。
-- Browser 使用独立 Electron partition，不注入 Node.js 或 preload。
-- Better Sidebar Host 对 Files 和 Git 请求执行 Session 与 Workspace 边界校验。
-- 市场固定 Git commit，默认阻止安装脚本，应用前不修改当前 Profile。
-- pnpm release-age 策略保持启用，只排除 `@deepseek-ai/*`。
+从 [GitHub Releases](https://github.com/oli-bot/dsh-desktop/releases)
+下载对应平台安装包（当前 v0.1.2）：
 
-## 本地构建与发布
+- macOS arm64 / x64：`DeepWork-0.1.2-mac-arm64.dmg`（或 `.zip`）等
+- Windows x64 / arm64：`DeepWork-0.1.2-win-x64.exe` 等
 
-完整构建会重建固定 DSH；缓存已经就绪时可使用 quick 构建：
+macOS 打开 DMG 拖入 `Applications`；测试包没有 Developer ID 与 notarization，首次
+启动可在 Finder 右键应用选择「打开」。Windows 运行 NSIS 安装器（非 one-click，可
+选择安装目录）。应用与原生 DSH 共享 `$DSH_HOME`，模型配置与 API Key 在 DSH 设置页
+配置即可（凭据由 DSH 持久化在共享 home 下）。
+
+## 构建与发布
 
 ```sh
-# macOS arm64（完整构建 + quick 构建，CI 默认走这条）
+# macOS arm64：完整构建（重建固定 DSH） / quick（跳过 DSH 重建）
 pnpm run dist:mac
 pnpm run dist:mac:quick
 
@@ -272,41 +182,19 @@ pnpm run dist:win
 pnpm run dist:win:quick
 pnpm run dist:win:arm64
 
-# 双平台顺序构建
+# 四平台顺序构建
 pnpm run dist:all
 ```
 
-产物位于 `release/`：
+产物在 `release/`：`DeepWork-<version>-mac-arm64.dmg/.zip`、`mac-x64.dmg/.zip`、
+`win-x64.exe`、`win-arm64.exe`，连同 `latest-mac.yml` / `latest.yml`（自动更新
+元数据）与未打包目录（`mac-arm64` / `mac` / `win-unpacked` / `win-arm64-unpacked`）。
 
-```text
-release/
-├── DeepWork-0.1.2-mac-arm64.dmg / .zip   # macOS Apple Silicon
-├── DeepWork-0.1.2-mac-x64.dmg / .zip     # macOS Intel
-├── DeepWork-0.1.2-win-x64.exe            # Windows x64 (NSIS)
-├── DeepWork-0.1.2-win-arm64.exe          # Windows arm64 (NSIS)
-├── latest-mac.yml                        # macOS 自动更新元数据
-├── latest.yml                            # Windows 自动更新元数据
-└── win-unpacked|mac-arm64|mac-x64|...    # 未打包的应用目录
-```
-
-> 说明：macOS 上交叉打包 Windows 目标时，electron-builder 自带的 7za 会
-> 跟随 staged 运行时的 pnpm workspace 符号链接形成递归路径并刷屏
-> ENAMETOOLONG 警告，导致构建失败；`build-win.mjs` 会自动把缓存的
-> 7za 包装为 `-snl`（符号链接按链接存储，不跟随）以解决此问题。
-> 目标平台的原生模块（sharp / koffi / node-pty ConPTY 等）由
-> `stage-dsh.mjs` 通过 `supportedArchitectures` 一并拉取，交叉构建即含
-> 目标平台原生依赖。
-
-打包内置的 Node runtime 默认匹配构建机平台；跨平台打包可显式指定
-`DEEPWORK_NODE_PLATFORM`（`darwin`/`win`）与 `DEEPWORK_NODE_ARCH`
-（`x64`/`arm64`），例如 `pnpm run dist:mac:x64`、`pnpm run dist:win:arm64`。
-
-仓库同时提供 GitHub Actions 工作流
-（`.github/workflows/release.yml`，tag 触发 macOS 构建，产出 macOS arm64）。
-Windows 安装包通过 macOS 上的交叉构建（`pnpm run dist:win[[:]arm64]` 等）
-或 Windows 机器构建产出，再手动/脚本上传到同一个 Release（当前
-windows-latest 原生 CI 构建被 junction 树 staging 问题阻塞，详见 workflow
-注释）。发布前建议在本机验证全部产物：
+GitHub Actions（`.github/workflows/release.yml`，`v*` tag 触发）在 `macos-latest`
+上跑完整构建并上传 macOS arm64 产物到该 tag 的 Release；Windows / x64 产物由
+macOS 交叉构建（`pnpm run dist:win:*`、`dist:mac:x64`）或 Windows 机器产出后再上传
+到同一 Release（windows-latest 原生 CI 被 junction 树 staging 问题阻塞，见 workflow
+注释）。发布前建议本机验证：
 
 ```sh
 pnpm run typecheck
@@ -316,19 +204,19 @@ codesign --verify --deep --strict release/mac-arm64/DeepWork.app
 hdiutil verify release/DeepWork-0.1.2-mac-arm64.dmg
 ```
 
-当前 package、下载说明和公开 Release 均为 `v0.1.2`。准备下一个版本时，
-先统一更新 workspace package 版本，再使用同一版本创建 tag 与 Release：
+准备新版本：先统一更新 `package.json` 的 `version`，再以同一版本创建 tag 与
+Release（`gh release create vNEXT <artifacts...>`），随后把产物作为 Release 附件上传。
 
-```sh
-gh release create vNEXT \
-  release/DeepWork-NEXT-arm64.dmg \
-  release/DeepWork-NEXT-arm64.zip \
-  release/DeepWork-NEXT-x64-setup.exe \
-  release/DeepWork-NEXT-x64.zip \
-  --title "DeepWork NEXT" \
-  --generate-notes
-```
+## 安全边界
+
+- 引擎只监听 `127.0.0.1` 随机端口；Agent 管理通道不对外。
+- 窗口 `sandbox + contextIsolation`、无 `nodeIntegration`；webview 仅放行 `http(s)`
+  来源并剥离 preload。
+- 桌面补丁层经 `--patch` 注入引擎，不写入用户 profile 的 `cordis.patch.yml`；
+  `ensureProfile` 只追加 `@deepwork/desktop` 一个 `link:` 依赖，不覆盖用户已有
+  bundles、依赖与 patch。
+- 引擎进程由 supervisor 监督，退出即干净回收；多实例由单实例锁防重。
 
 ## License
 
-[BSD 3-Clause](./LICENSE)
+[MIT](./LICENSE)
